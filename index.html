@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Charging Under Chaos</title>
+<meta name="description" content="A simulation of 5,000 electric cars: what does it cost when the car and charger companies' systems are unreliable?">
+<style>
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f0f3f6; --text:#14181f; --muted:#5b6475; --line:#e3e7ec;
+  --accent:#0f8a6a; --accent-2:#0b6e8f; --accent-soft:#e2f4ee; --ok:#11734f; --ok-bg:#ddf3e8;
+  --warn:#8a5a00; --warn-bg:#fcefd2; --bad:#a3262a; --bad-bg:#fbe3e3;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.06);
+  --hero-a:#e6f6f0; --hero-b:#e5f0f8;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e1116; --surface:#161b22; --surface-2:#1c222b; --text:#e9edf2; --muted:#9aa4b4; --line:#2a313c;
+    --accent:#3fd0a6; --accent-2:#5bb8e0; --accent-soft:#12302a; --ok:#6fe0ad; --ok-bg:#123024;
+    --warn:#f2c46b; --warn-bg:#3a2c0e; --bad:#ff9a9e; --bad-bg:#3a1a1c;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+    --hero-a:#102822; --hero-b:#0f2230;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  overflow-x:hidden}
+.wrap{max-width:60rem;margin:0 auto;padding:0 16px}
+.hero{background:linear-gradient(135deg,var(--hero-a),var(--hero-b));border-bottom:1px solid var(--line)}
+.hero .wrap{padding-top:40px;padding-bottom:36px}
+.pill{display:inline-block;font-size:.8rem;font-weight:600;letter-spacing:.02em;color:var(--accent);
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 12px;margin:0 0 16px}
+h1{font-size:2rem;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px;max-width:22ch}
+h2{font-size:1.5rem;line-height:1.25;letter-spacing:-.01em;margin:0 0 8px}
+h3{font-size:1.05rem;line-height:1.35;margin:0}
+p{margin:0 0 12px}
+.lede{font-size:1.15rem;line-height:1.55;max-width:44rem;margin:0 0 24px}
+.lede strong{color:var(--accent)}
+.stats{display:grid;grid-template-columns:1fr;gap:12px;margin:0;padding:0;list-style:none}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow)}
+.stat .n{font-size:2.1rem;font-weight:700;line-height:1.1;letter-spacing:-.02em;display:block;
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat .l{color:var(--muted);font-size:.92rem;display:block;margin-top:6px}
+.fine{font-size:.88rem;color:var(--muted);margin:16px 0 0}
+section{padding:44px 0 4px}
+.intro{color:var(--muted);max-width:44rem;margin-bottom:18px}
+.steps{display:grid;grid-template-columns:1fr;gap:12px;margin:0;padding:0;list-style:none;counter-reset:s}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+.step svg{width:28px;height:28px;color:var(--accent);margin-bottom:8px}
+.step .num{font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:2px}
+.callout{background:var(--accent-soft);border-radius:14px;padding:14px 16px;margin-top:14px;font-size:.95rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:var(--shadow)}
+.explorer{display:grid;grid-template-columns:1fr;gap:20px}
+.ctl{margin:0 0 18px}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:600;margin-bottom:2px}
+.ctl .hint{display:block;font-size:.85rem;color:var(--muted);font-weight:400;margin-bottom:6px}
+.ctl output{color:var(--accent);font-variant-numeric:tabular-nums;font-weight:700}
+input[type=range]{width:100%;margin:0;accent-color:var(--accent);height:32px}
+.ticks{display:flex;justify-content:space-between;color:var(--muted);font-size:.75rem;padding:0 2px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 0}
+button{font:inherit;font-size:.88rem;font-weight:600;color:var(--text);background:var(--surface-2);border:1px solid var(--line);
+  border-radius:999px;padding:8px 14px;cursor:pointer;min-height:40px}
+button:hover{border-color:var(--accent);color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.out{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+.out .stat{box-shadow:none;background:var(--surface-2);border-color:transparent;padding:14px}
+.out .stat .n{font-size:1.5rem}
+.flag{grid-column:1/-1;padding:12px 14px;border-radius:12px;background:var(--bad-bg);color:var(--bad);font-size:.9rem}
+.flag.ok{background:var(--ok-bg);color:var(--ok)}
+.cards{display:grid;grid-template-columns:1fr;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
+.card header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.tag{font-size:.72rem;font-weight:600;border:1px dashed var(--muted);color:var(--muted);border-radius:6px;padding:1px 6px}
+.badge{display:inline-block;font-size:.8rem;font-weight:700;border-radius:999px;padding:3px 12px;margin-bottom:10px}
+.badge.ok{background:var(--ok-bg);color:var(--ok)}
+.badge.warn{background:var(--warn-bg);color:var(--warn)}
+.badge.bad{background:var(--bad-bg);color:var(--bad)}
+.blurb{font-size:.92rem;color:var(--muted)}
+.kv{margin:0}
+.kv div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+.kv dt{color:var(--muted);font-size:.92rem}
+.kv dd{margin:0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.pm{color:var(--muted);font-size:.82rem;font-weight:400}
+.std{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr;gap:12px;counter-reset:r}
+.std li{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px 14px 56px;position:relative;box-shadow:var(--shadow)}
+.std li::before{counter-increment:r;content:counter(r);position:absolute;left:16px;top:16px;width:28px;height:28px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:center}
+.std h3{margin-bottom:6px}
+.std p{font-size:.94rem;margin-bottom:8px}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.chip{font-size:.78rem;background:var(--surface-2);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.diagram{display:block;margin:0 auto;width:100%;max-width:440px;height:auto}
+.diagram text{fill:var(--text);font:14px ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.diagram .sm{font-size:12px;fill:var(--muted)}
+.diagram .fail{font-size:12px;fill:var(--bad)}
+.diagram rect.box{fill:var(--surface-2);stroke:var(--line);stroke-width:1.2}
+.diagram rect.failbox{fill:var(--bad-bg);stroke:none}
+.diagram line,.diagram path.arrow{stroke:var(--muted);stroke-width:1.5;fill:none}
+.diagram .head{fill:var(--muted);stroke:none}
+.limits{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr;gap:10px}
+.limits li{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:.94rem}
+footer{margin:48px 0 0;padding:24px 0 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+@media (min-width:640px){
+  h1{font-size:2.6rem}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .steps{grid-template-columns:repeat(3,1fr)}
+  .cards{grid-template-columns:repeat(2,1fr)}
+  .std{grid-template-columns:repeat(2,1fr)}
+  .limits{grid-template-columns:repeat(2,1fr)}
+}
+@media (min-width:860px){
+  .explorer{grid-template-columns:1.1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+<div class="wrap">
+  <p class="pill">A simulation &middot; made-up companies &middot; real electricity prices</p>
+  <h1>Charging 5,000 electric cars through unreliable systems: what does it cost?</h1>
+  <p class="lede" id="hero-answer">Good control software rescued almost all of it. Against made-up failure rates, unreliable car and charger systems cost about <strong>&pound;0.106 per car per month</strong> and no car was left uncharged, but the software had to send <strong>1.85 times as many messages</strong> to get there.</p>
+  <ul class="stats" aria-label="Headline numbers">
+    <li class="stat"><span class="n" id="hero-retained">97.34%</span><span class="l">of the possible savings kept (with perfect systems: 97.59%)</span></li>
+    <li class="stat"><span class="n" id="hero-cost">&pound;0.106</span><span class="l">lost per car per month because the systems are unreliable</span></li>
+    <li class="stat"><span class="n" id="hero-mult">1.85x</span><span class="l">as many messages needed: 7.35 per car per night, against 3.97 with perfect systems</span></li>
+  </ul>
+  <p class="fine">5,000 simulated cars over 30 nights of September 2026, run three times. Every car was charged in time: no missed departures. The failure rates are invented, so treat these as estimates, not measurements.</p>
+</div>
+</div>
+
+<div class="wrap">
+
+<section aria-labelledby="what">
+  <h2 id="what">What this is</h2>
+  <p class="intro">Companies that charge electric cars at the cheapest times don't control the cars directly. They send messages through the car or charger maker's own online system. This project asks what happens when those systems are unreliable.</p>
+  <ol class="steps">
+    <li class="step">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+      <span class="num">Step 1</span>
+      <h3>Pick the cheapest hours</h3>
+      <p>Every evening, software picks the cheapest half-hours to charge each car, using real Octopus Agile electricity prices for London (September 2026).</p>
+    </li>
+    <li class="step">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      <span class="num">Step 2</span>
+      <h3>Send start and stop messages</h3>
+      <p>Through the night it sends &quot;start charging&quot; and &quot;stop charging&quot; to the car or charger maker's system, then checks the car did what it was told.</p>
+    </li>
+    <li class="step">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg>
+      <span class="num">Step 3</span>
+      <h3>Things go wrong</h3>
+      <p>Those systems can be slow, ignore messages, send wrong updates, or let cars fall asleep. We measured how much each problem costs, and how hard the software has to work around it.</p>
+    </li>
+  </ol>
+  <p class="callout">Everything except the electricity prices is simulated: 5,000 cars, four <strong>made-up</strong> companies whose failure rates we <strong>invented</strong>, and control software written for this project. No real car or company was involved.</p>
+</section>
+
+<section aria-labelledby="explorer">
+  <h2 id="explorer">Try it: make a partner's system worse</h2>
+  <p class="intro">Move the sliders to make one company's system slower, more forgetful or sleepier, and see what it costs. Each position is a pre-run simulation of 1,000 cars for a month (three runs each). Nothing is calculated in your browser.</p>
+  <div class="panel explorer">
+    <noscript><p>This needs JavaScript to look up the pre-run results.</p></noscript>
+    <div>
+      <div class="ctl">
+        <label for="c-lat">How slow it is to respond <output id="o-lat" for="c-lat"></output></label>
+        <span class="hint">Typical time from sending a message to the car acting on it</span>
+        <input type="range" id="c-lat" min="0" max="4" step="1" value="1">
+        <div class="ticks" id="t-lat" aria-hidden="true"></div>
+      </div>
+      <div class="ctl">
+        <label for="c-drop">How often it ignores a message <output id="o-drop" for="c-drop"></output></label>
+        <span class="hint">Says &quot;done&quot; but nothing happens</span>
+        <input type="range" id="c-drop" min="0" max="4" step="1" value="1">
+        <div class="ticks" id="t-drop" aria-hidden="true"></div>
+      </div>
+      <div class="ctl">
+        <label for="c-sleep">How often cars fall asleep <output id="o-sleep" for="c-sleep"></output></label>
+        <span class="hint">A sleeping car ignores messages until it is woken</span>
+        <input type="range" id="c-sleep" min="0" max="3" step="1" value="0">
+        <div class="ticks" id="t-sleep" aria-hidden="true"></div>
+      </div>
+      <p class="fine" style="margin-top:0">Or jump to a made-up company:</p>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="out" role="status" aria-live="polite" aria-atomic="true">
+      <div class="stat"><span class="n" id="r-vr">-</span><span class="l">savings kept (perfect: <span id="r-ref">-</span>)</span></div>
+      <div class="stat"><span class="n" id="r-cost">-</span><span class="l">lost per car per month (uncertainty <span id="r-se">-</span>)</span></div>
+      <div class="stat"><span class="n" id="r-calls">-</span><span class="l">messages per car per night (<span id="r-mult">-</span> perfect)</span></div>
+      <div class="stat"><span class="n" id="r-miss">-</span><span class="l">cars not charged in time, per month (of 1,000)</span></div>
+      <div class="flag ok" id="r-flag"></div>
+    </div>
+  </div>
+  <p class="fine">The uncertainty is the spread across the three runs. Other problems (outages, message limits, wrong status data) are switched off in this explorer.</p>
+</section>
+
+<section aria-labelledby="partners">
+  <h2 id="partners">Four made-up companies</h2>
+  <p class="intro">The main run: 5,000 cars split across four fictional companies, from reliable to bad. Their behaviour is invented, so read these as the price of each kind of unreliability, not as facts about any real company.</p>
+  <div class="cards">
+
+<article class="card" aria-labelledby="p-Northwind">
+  <header>
+    <h3 id="p-Northwind">Northwind</h3>
+    <span class="tag">Fictional</span>
+  </header>
+  <span hidden>Grade code: dispatch-grade</span>
+  <span class="badge ok">Ready for live control</span>
+  <p class="blurb">Charger company. Fast and reliable. 35% of the cars (1,750).</p>
+  <dl class="kv">
+    <div><dt>Savings kept</dt><dd>97.54%</dd></div>
+    <div><dt>Lost per car per month</dt><dd>&pound;0.006 <span class="pm">&plusmn; &pound;0.000</span></dd></div>
+    <div><dt>Cars not charged in time</dt><dd>none</dd></div>
+    <div><dt>Messages needed</dt><dd>1.04x a perfect system</dd></div>
+    <div><dt>Time to act on a command</dt><dd>typically 2 s, slowest 4 s</dd></div>
+    
+  </dl>
+</article>
+
+<article class="card" aria-labelledby="p-Bramble">
+  <header>
+    <h3 id="p-Bramble">Bramble</h3>
+    <span class="tag">Fictional</span>
+  </header>
+  <span hidden>Grade code: dispatch-grade</span>
+  <span class="badge ok">Ready for live control</span>
+  <p class="blurb">Charger company. Strict limits on how many messages you can send, short outages, repeated updates. 25% of the cars (1,250).</p>
+  <dl class="kv">
+    <div><dt>Savings kept</dt><dd>97.29%</dd></div>
+    <div><dt>Lost per car per month</dt><dd>&pound;0.155 <span class="pm">&plusmn; &pound;0.001</span></dd></div>
+    <div><dt>Cars not charged in time</dt><dd>none</dd></div>
+    <div><dt>Messages needed</dt><dd>1.15x a perfect system</dd></div>
+    <div><dt>Time to act on a command</dt><dd>typically 5 s, slowest 12 s</dd></div>
+    
+  </dl>
+</article>
+
+<article class="card" aria-labelledby="p-Kestrel">
+  <header>
+    <h3 id="p-Kestrel">Kestrel</h3>
+    <span class="tag">Fictional</span>
+  </header>
+  <span hidden>Grade code: schedule-only</span>
+  <span class="badge warn">Usable, with workarounds</span>
+  <p class="blurb">Car company. Cars fall asleep and must be woken before they will listen. 25% of the cars (1,250).</p>
+  <dl class="kv">
+    <div><dt>Savings kept</dt><dd>97.40%</dd></div>
+    <div><dt>Lost per car per month</dt><dd>&pound;0.082 <span class="pm">&plusmn; &pound;0.002</span></dd></div>
+    <div><dt>Cars not charged in time</dt><dd>none</dd></div>
+    <div><dt>Messages needed</dt><dd>2.35x a perfect system</dd></div>
+    <div><dt>Time to act on a command</dt><dd>typically 4 s, slowest 10 s</dd></div>
+    <div><dt>Wake-up messages</dt><dd>4.4 per car per night</dd></div>
+  </dl>
+</article>
+
+<article class="card" aria-labelledby="p-Halcyon">
+  <header>
+    <h3 id="p-Halcyon">Halcyon</h3>
+    <span class="tag">Fictional</span>
+  </header>
+  <span hidden>Grade code: schedule-only</span>
+  <span class="badge warn">Usable, with workarounds</span>
+  <p class="blurb">Car company. Slow to respond (30 s to 3 min), ignores about 3 in 100 messages, sends updates out of order. 15% of the cars (750).</p>
+  <dl class="kv">
+    <div><dt>Savings kept</dt><dd>96.77%</dd></div>
+    <div><dt>Lost per car per month</dt><dd>&pound;0.335 <span class="pm">&plusmn; &pound;0.005</span></dd></div>
+    <div><dt>Cars not charged in time</dt><dd>none</dd></div>
+    <div><dt>Messages needed</dt><dd>4.06x a perfect system</dd></div>
+    <div><dt>Time to act on a command</dt><dd>typically 61 s, slowest 157 s</dd></div>
+    
+  </dl>
+</article>
+  </div>
+  <p class="fine"><strong>Ready for live control:</strong> loses under half a percent of savings, no cars missed, under twice the messages. <strong>Not ready:</strong> loses 2% or more of savings, or misses 5 or more cars per 10,000 nights. Anything in between is <strong>usable, with workarounds</strong>.</p>
+</section>
+
+<section aria-labelledby="standard">
+  <h2 id="standard">What a partner API should guarantee</h2>
+  <p class="intro">In plain terms: what to ask a car or charger maker's system (its API) to promise, and what each promise is worth. Money is per car per month; &quot;messages&quot; is how many extra the software has to send each night to work around the problem. &quot;Slider test&quot; figures come from the explorer above; &quot;one-off test&quot; figures price one made-up problem at one strength, so treat them as examples.</p>
+  <ol class="std">
+<li><h3>Report each charger's real charging speed</h3><p>Worth &pound;0.86 per car per month when 15% of chargers claim 7 kW but really deliver 3.6 kW. 17.7 cars per 1,000 were not charged in time each month; 17.3 of those were our software's fault (it could have learned the real speed from meter readings), so part of this price is ours.</p><p class="meta"><span class="chip">Messages: no change</span><span class="chip src">From the one-off test</span></p></li>
+<li><h3>Respond quickly: typically within 10 seconds</h3><p>A slow partner costs &pound;0.025 at 10 s, &pound;0.085 at 30 s and &pound;0.20 at 70 s (per car per month). From 70 s some cars start missing their charge (4 of 20 settings); at 150 s, 19 of 20 settings do.</p><p class="meta"><span class="chip">Messages: about 4.7 fewer per car per night (2 s vs 30 s)</span><span class="chip src">From the slider test</span></p></li>
+<li><h3>Publish maintenance times, and keep them out of the 4am to 7:30am departure rush</h3><p>A daily unannounced 1-hour outage costs up to &pound;0.99 per affected car per month (Kestrel-like) or &pound;1.03 (Halcyon-like), and 69 cars per 1,000 were not charged in time each month. A published calendar only helps if the control software uses it well; ours did not fully.</p><p class="meta"><span class="chip">Messages: 10.4 / 5.9 extra per car per night</span><span class="chip src">From the one-off test</span></p></li>
+<li><h3>Wake sleeping cars reliably: within 60 seconds, and keep them awake for 10 minutes</h3><p>If cars fall asleep the way we assumed, any amount of sleep adds &pound;0.034 to &pound;0.039 per car per month. Removing sleep saves &pound;0.033 to &pound;0.034 per car; heavy sleep with lost wake-ups cost &pound;0.16 per car (Kestrel-like).</p><p class="meta"><span class="chip">Messages: about 4.9 fewer per car per night</span><span class="chip src">From the slider test and one-off tests</span></p></li>
+<li><h3>Stick to the message limits you publish, with room for every car at the cheapest half-hour</h3><p>&pound;0.17 per Bramble car with slow links and a tight limit; &pound;0.013 per car when the real limit is half the published one.</p><p class="meta"><span class="chip">Messages: 1.0 to 1.9 extra per car per night</span><span class="chip src">From the one-off test</span></p></li>
+<li><h3>When you say a command worked, it really worked</h3><p>Under &pound;0.01 per car per month at every rate of ignored messages we tried, because the software checks and resends.</p><p class="meta"><span class="chip">Messages: up to 2.8 extra per car per night</span><span class="chip src">From the slider test</span></p></li>
+<li><h3>Status data that is honest and up to date</h3><p>&pound;0.004 per car per month or less, because the software double-checks.</p><p class="meta"><span class="chip">Messages: up to 2.5 extra per car per night</span><span class="chip src">From the one-off test</span></p></li>
+<li><h3>Status updates you can trust: the right type, in the right order</h3><p>&pound;0.006 per car per month or less, because the software double-checks.</p><p class="meta"><span class="chip">Messages: 4.0 fewer per car per night (Halcyon-like)</span><span class="chip src">From the one-off test</span></p></li>
+<li><h3>Accurate clocks: timestamps within 5 seconds</h3><p>&pound;0.006 per car per month or less.</p><p class="meta"><span class="chip">Messages: up to 4.8 extra per car per night</span><span class="chip src">From the one-off test</span></p></li>
+<li><h3>A meter reading for every car, every night, at a known time</h3><p>About zero in charging value (&pound;0.0001), but it is what makes the bill accurate when other data goes wrong.</p><p class="meta"><span class="chip">Messages: 0.93 extra per car per night if 10% are missing</span><span class="chip src">From the one-off test</span></p></li>
+<li><h3>Commands that are safe to send twice</h3><p>Zero measured (at most &pound;0.0001), because a repeated start or stop does no harm here. It is what makes all the resending above safe.</p><p class="meta"><span class="chip">Messages: makes items 2, 4 and 6 possible</span><span class="chip src">From the one-off test</span></p></li>
+  </ol>
+  <p class="fine">Most problems cost pennies because the software works around them by sending more messages. That extra work, and the risk of hitting the partner's message limits, is the hidden cost. Costs per car were higher with 5,000 cars than with 1,000 (&pound;0.106 against &pound;0.044 for the same set-up), possibly because message limits start to bite (a guess; no limit was actually hit), so these figures may be underestimates.</p>
+</section>
+
+<section aria-labelledby="flow">
+  <h2 id="flow">Where it goes wrong</h2>
+  <div class="panel">
+  <svg class="diagram" viewBox="0 0 360 560" role="img" aria-labelledby="flow-t flow-d">
+    <title id="flow-t">From plan to car, and where each problem hits</title>
+    <desc id="flow-d">The plan goes to the control software, then through the partner's system to the car. Problems: slow or ignored messages and message limits between the software and the partner's system; outages and sleeping cars between the partner's system and the car; chargers that are slower than they claim at the car; and on the way back, status data that is stuck or wrong, updates lost or late, missing meter readings and clocks that are off.</desc>
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker></defs>
+    <rect class="box" x="90" y="8" width="180" height="48" rx="10"/>
+    <text x="180" y="30" text-anchor="middle">1. The plan</text>
+    <text x="180" y="46" text-anchor="middle" class="sm">cheapest hours, set each evening</text>
+    <line x1="180" y1="56" x2="180" y2="98" marker-end="url(#ah)"/>
+    <rect class="box" x="90" y="100" width="180" height="48" rx="10"/>
+    <text x="180" y="122" text-anchor="middle">2. Control software</text>
+    <text x="180" y="138" text-anchor="middle" class="sm">written for this project</text>
+    <line x1="180" y1="148" x2="180" y2="218" marker-end="url(#ah)"/>
+    <rect class="failbox" x="6" y="160" width="166" height="46" rx="8"/>
+    <text x="14" y="177" class="fail">Slow or ignored messages</text>
+    <text x="14" y="193" class="fail">Limits on how many you send</text>
+    <rect class="box" x="90" y="220" width="180" height="48" rx="10"/>
+    <text x="180" y="242" text-anchor="middle">3. Partner's system</text>
+    <text x="180" y="258" text-anchor="middle" class="sm">made up, invented failures</text>
+    <line x1="180" y1="268" x2="180" y2="338" marker-end="url(#ah)"/>
+    <rect class="failbox" x="190" y="280" width="164" height="46" rx="8"/>
+    <text x="198" y="297" class="fail">Outages</text>
+    <text x="198" y="313" class="fail">Cars asleep, need waking</text>
+    <rect class="box" x="90" y="340" width="180" height="48" rx="10"/>
+    <text x="180" y="362" text-anchor="middle">4. The car</text>
+    <text x="180" y="378" text-anchor="middle" class="sm">must be charged by morning</text>
+    <rect class="failbox" x="6" y="398" width="180" height="46" rx="8"/>
+    <text x="14" y="415" class="fail">Charger slower than it</text>
+    <text x="14" y="431" class="fail">claims (says 7 kW)</text>
+    <path class="arrow" d="M 270 364 L 330 364 L 330 124 L 274 124" marker-end="url(#ah)"/>
+    <text x="180" y="470" text-anchor="middle" class="sm">On the way back to the software (right-hand line):</text>
+    <rect class="failbox" x="24" y="480" width="312" height="64" rx="8"/>
+    <text x="34" y="499" class="fail">Status data stuck or wrong</text>
+    <text x="34" y="515" class="fail">Updates lost, late, repeated or out of order</text>
+    <text x="34" y="531" class="fail">Meter readings missing; clocks a few seconds off</text>
+  </svg>
+  </div>
+</section>
+
+<section aria-labelledby="limits">
+  <h2 id="limits">Limitations</h2>
+  <p class="intro">What this does not show.</p>
+  <ul class="limits">
+    <li><strong>The failure rates are made up.</strong> We don't know how real car and charger companies behave. A finding like &quot;sleeping cars were hardest&quot; only holds if cars sleep the way we assumed.</li>
+    <li><strong>One month, one place.</strong> September 2026 prices for London. Winter, other regions and clock-change nights aren't covered.</li>
+    <li><strong>Simplified money.</strong> The figures are estimates of savings, not real bills. Home car charging only; none of the other ways companies get paid for shifting electricity use.</li>
+    <li><strong>The plan is fixed each evening.</strong> Real systems re-plan overnight, which would recover some of the cost of slow systems.</li>
+    <li><strong>The control software is a stand-in, and its testing was stopped early.</strong> After 4 rounds of stress-testing, some problems were still unfixed: chargers that claim 7 kW but deliver less, unannounced maintenance in the morning rush, poor use of published maintenance calendars, and rare clock problems. Some explorer settings are flagged for this.</li>
+    <li><strong>Judgement calls in how failures were counted.</strong> Cars got a 5-minute grace period (300 s) after a partner's outage before a miss counted against the software; extra charging caused by a partner's outage counts as a warning, not a failure; a missed charge is priced at the highest price in the next 24 hours; and for slow chargers, getting the car charged beat sticking to the plan.</li>
+    <li><strong>Size.</strong> Most tests used 1,000 cars; the headline uses 5,000. Costs per car were higher at 5,000, so the smaller-test figures are probably underestimates.</li>
+  </ul>
+</section>
+
+<footer>
+  <p>How the numbers get here: every figure on this page comes from the project's results files, produced by simulation runs and checked by independent tests. The explorer, headline and company cards are looked up and never re-simulated. The guarantee figures are computed at build time from the same results. Company names are made up. Prices: Octopus Agile (London) and Elexon, September 2026.</p>
+</footer>
+</div>
+
+<script type="application/json" id="results-data">{"standard":{"slow_cost":0.8574,"slow_pp":2.0301,"slow_missed":17.67,"slow_missed_dispatcher":17.33,"lat_cost_10":0.0249,"lat_cost_30":0.0854,"lat_cost_70":0.2043,"lat_calls_saved":4.740399999999999,"lat_miss_cells_70":4,"lat_cells_70":20,"lat_fail_runs_70":11,"lat_runs_70":60,"lat_miss_cells_150":19,"lat_cells_150":20,"lat_fail_runs_150":57,"lat_runs_150":60,"lat_miss_150":1.667,"maint_kestrel":0.988,"maint_halcyon":1.0347,"maint_missed":69.33,"maint_calls_kestrel":10.4122,"maint_calls_halcyon":5.8845,"sleep_added_lo":0.0337,"sleep_added_hi":0.0386,"sleep_calls_saved":4.8779,"sleepfix_kestrel":0.0333,"sleepfix_halcyon":0.0337,"deep_sleep_kestrel":0.1598,"quota_bramble":0.1662,"lying_bramble":0.0131,"quota_calls_lo":1.0283,"quota_calls_hi":1.8724,"drop_cost_max":0.0092,"drop_calls_saved":2.8286,"tel_cost_max":0.0043,"tel_calls_max":2.5279,"web_cost_max":0.0056,"web_calls_saved":3.9767,"clock_cost_max":0.0061,"clock_calls_max":4.8322,"meter_cost":0.0001,"meter_calls":0.9327,"idem_cost_abs_max":0.0001},"sweep":{"devices":1000,"nights":30,"seeds":[1,2,3],"grid":{"latency_median_s":[2.0,10.0,30.0,70.0,150.0],"silent_drop_prob":[0.002,0.01,0.03,0.06,0.1],"sleep_prob":[0.0,0.15,0.35,0.7]},"reference":{"value_retained":{"mean":0.975704,"se":0.000459,"per_seed":[0.975269,0.975222,0.976621]},"load_api_calls":{"mean":3.9913,"se":0.0008,"per_seed":[3.9897,3.9924,3.9917]}},"cells":[{"latency_median_s":2.0,"silent_drop_prob":0.002,"sleep_prob":0.0,"value_retained":{"mean":0.975586,"se":0.000457,"per_seed":[0.975153,0.975105,0.9765]},"api_cost_gbp_per_device_month_paired":{"mean":0.005,"se":0.0001,"per_seed":[0.0049,0.0049,0.0051]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":3.9817,"se":0.0013,"per_seed":[3.9791,3.9834,3.9827]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.01,"sleep_prob":0.0,"value_retained":{"mean":0.975515,"se":0.000457,"per_seed":[0.975084,0.975031,0.976429]},"api_cost_gbp_per_device_month_paired":{"mean":0.008,"se":0.0001,"per_seed":[0.0078,0.0081,0.0082]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":4.0333,"se":0.0008,"per_seed":[4.0341,4.034,4.0317]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.03,"sleep_prob":0.0,"value_retained":{"mean":0.975498,"se":0.000454,"per_seed":[0.975075,0.975013,0.976406]},"api_cost_gbp_per_device_month_paired":{"mean":0.0087,"se":0.0003,"per_seed":[0.0082,0.0089,0.0091]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":5.3927,"se":0.007,"per_seed":[5.3893,5.4062,5.3825]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.06,"sleep_prob":0.0,"value_retained":{"mean":0.975487,"se":0.000453,"per_seed":[0.975065,0.975005,0.976392]},"api_cost_gbp_per_device_month_paired":{"mean":0.0092,"se":0.0003,"per_seed":[0.0086,0.0092,0.0097]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":6.2147,"se":0.0172,"per_seed":[6.2487,6.202,6.1935]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.1,"sleep_prob":0.0,"value_retained":{"mean":0.975494,"se":0.000458,"per_seed":[0.975066,0.975006,0.976409]},"api_cost_gbp_per_device_month_paired":{"mean":0.0089,"se":0.0002,"per_seed":[0.0086,0.0091,0.009]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":6.8103,"se":0.0278,"per_seed":[6.8196,6.7583,6.8531]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.002,"sleep_prob":0.0,"value_retained":{"mean":0.975115,"se":0.000456,"per_seed":[0.974692,0.974628,0.976026]},"api_cost_gbp_per_device_month_paired":{"mean":0.0249,"se":0.0003,"per_seed":[0.0243,0.0251,0.0252]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":3.9819,"se":0.0013,"per_seed":[3.9794,3.9836,3.9826]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.01,"sleep_prob":0.0,"value_retained":{"mean":0.97503,"se":0.00046,"per_seed":[0.974596,0.974544,0.975949]},"api_cost_gbp_per_device_month_paired":{"mean":0.0285,"se":0.0001,"per_seed":[0.0284,0.0287,0.0284]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":4.0424,"se":0.0072,"per_seed":[4.0348,4.0356,4.0569]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.03,"sleep_prob":0.0,"value_retained":{"mean":0.975001,"se":0.000467,"per_seed":[0.974549,0.974518,0.975935]},"api_cost_gbp_per_device_month_paired":{"mean":0.0297,"se":0.0004,"per_seed":[0.0303,0.0297,0.029]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":5.5632,"se":0.0358,"per_seed":[5.6346,5.533,5.522]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.06,"sleep_prob":0.0,"value_retained":{"mean":0.974965,"se":0.000456,"per_seed":[0.974515,0.974503,0.975877]},"api_cost_gbp_per_device_month_paired":{"mean":0.0312,"se":0.0004,"per_seed":[0.0318,0.0304,0.0315]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":6.4119,"se":0.0335,"per_seed":[6.4617,6.3482,6.4257]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.1,"sleep_prob":0.0,"value_retained":{"mean":0.974973,"se":0.000448,"per_seed":[0.974536,0.974515,0.975869]},"api_cost_gbp_per_device_month_paired":{"mean":0.0309,"se":0.0006,"per_seed":[0.0309,0.0299,0.0318]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":6.9969,"se":0.0234,"per_seed":[6.9501,7.0209,7.0198]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.002,"sleep_prob":0.0,"value_retained":{"mean":0.973682,"se":0.000413,"per_seed":[0.973249,0.973289,0.974508]},"api_cost_gbp_per_device_month_paired":{"mean":0.0854,"se":0.0022,"per_seed":[0.0851,0.0817,0.0894]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.7221,"se":0.0172,"per_seed":[8.7338,8.7442,8.6883]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.01,"sleep_prob":0.0,"value_retained":{"mean":0.973671,"se":0.000427,"per_seed":[0.973248,0.973241,0.974525]},"api_cost_gbp_per_device_month_paired":{"mean":0.0859,"se":0.0015,"per_seed":[0.0852,0.0837,0.0887]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.7344,"se":0.0145,"per_seed":[8.7488,8.7491,8.7054]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.03,"sleep_prob":0.0,"value_retained":{"mean":0.973694,"se":0.000414,"per_seed":[0.973292,0.973268,0.974523]},"api_cost_gbp_per_device_month_paired":{"mean":0.0849,"se":0.0019,"per_seed":[0.0833,0.0826,0.0888]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.7872,"se":0.0044,"per_seed":[8.796,8.7825,8.783]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.06,"sleep_prob":0.0,"value_retained":{"mean":0.973689,"se":0.000415,"per_seed":[0.973278,0.973269,0.974519]},"api_cost_gbp_per_device_month_paired":{"mean":0.0851,"se":0.0019,"per_seed":[0.0839,0.0826,0.0889]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.8326,"se":0.0072,"per_seed":[8.837,8.8422,8.8186]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.1,"sleep_prob":0.0,"value_retained":{"mean":0.973679,"se":0.000429,"per_seed":[0.973262,0.973238,0.974537]},"api_cost_gbp_per_device_month_paired":{"mean":0.0855,"se":0.0013,"per_seed":[0.0846,0.0839,0.0882]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.9526,"se":0.0095,"per_seed":[8.9468,8.9398,8.9711]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.002,"sleep_prob":0.0,"value_retained":{"mean":0.970868,"se":0.000419,"per_seed":[0.970512,0.97039,0.971703]},"api_cost_gbp_per_device_month_paired":{"mean":0.2043,"se":0.0022,"per_seed":[0.2005,0.2043,0.2081]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.9443,"se":0.0015,"per_seed":[8.9428,8.9472,8.9428]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.01,"sleep_prob":0.0,"value_retained":{"mean":0.970915,"se":0.000451,"per_seed":[0.970526,0.970405,0.971815]},"api_cost_gbp_per_device_month_paired":{"mean":0.2023,"se":0.0012,"per_seed":[0.1999,0.2036,0.2033]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.9565,"se":0.0057,"per_seed":[8.9452,8.9625,8.9618]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.03,"sleep_prob":0.0,"value_retained":{"mean":0.970901,"se":0.000432,"per_seed":[0.970443,0.970496,0.971765]},"api_cost_gbp_per_device_month_paired":{"mean":0.2029,"se":0.0017,"per_seed":[0.2034,0.1998,0.2054]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":9.0018,"se":0.0014,"per_seed":[9.0022,9.0041,8.9992]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.06,"sleep_prob":0.0,"value_retained":{"mean":0.97094,"se":0.000375,"per_seed":[0.970524,0.970607,0.971689]},"api_cost_gbp_per_device_month_paired":{"mean":0.2013,"se":0.004,"per_seed":[0.2,0.1951,0.2087]},"missed_departures":{"mean":0.667,"se":0.333,"per_seed":[1,1,0]},"load_api_calls":{"mean":9.0784,"se":0.0012,"per_seed":[9.0764,9.0784,9.0805]},"verify_ok":[false,false,true]},{"latency_median_s":70.0,"silent_drop_prob":0.1,"sleep_prob":0.0,"value_retained":{"mean":0.970947,"se":0.000443,"per_seed":[0.970531,0.970478,0.971833]},"api_cost_gbp_per_device_month_paired":{"mean":0.2009,"se":0.0009,"per_seed":[0.1997,0.2005,0.2026]},"missed_departures":{"mean":0.333,"se":0.333,"per_seed":[1,0,0]},"load_api_calls":{"mean":9.1976,"se":0.0076,"per_seed":[9.1956,9.1855,9.2116]},"verify_ok":[false,true,true]},{"latency_median_s":150.0,"silent_drop_prob":0.002,"sleep_prob":0.0,"value_retained":{"mean":0.970972,"se":0.000429,"per_seed":[0.970569,0.970517,0.97183]},"api_cost_gbp_per_device_month_paired":{"mean":0.1999,"se":0.0014,"per_seed":[0.1981,0.1989,0.2027]},"missed_departures":{"mean":1.667,"se":0.882,"per_seed":[2,3,0]},"load_api_calls":{"mean":9.2195,"se":0.0075,"per_seed":[9.2178,9.2074,9.2332]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.01,"sleep_prob":0.0,"value_retained":{"mean":0.970971,"se":0.000419,"per_seed":[0.970521,0.970583,0.971808]},"api_cost_gbp_per_device_month_paired":{"mean":0.1999,"se":0.0022,"per_seed":[0.2001,0.1961,0.2036]},"missed_departures":{"mean":0.667,"se":0.667,"per_seed":[2,0,0]},"load_api_calls":{"mean":9.2497,"se":0.0027,"per_seed":[9.2475,9.2465,9.2552]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.03,"sleep_prob":0.0,"value_retained":{"mean":0.970917,"se":0.000426,"per_seed":[0.970525,0.970458,0.971767]},"api_cost_gbp_per_device_month_paired":{"mean":0.2022,"se":0.0016,"per_seed":[0.1999,0.2014,0.2053]},"missed_departures":{"mean":1.333,"se":1.333,"per_seed":[4,0,0]},"load_api_calls":{"mean":9.3067,"se":0.0064,"per_seed":[9.3102,9.2943,9.3157]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.06,"sleep_prob":0.0,"value_retained":{"mean":0.970734,"se":0.000407,"per_seed":[0.970369,0.970287,0.971546]},"api_cost_gbp_per_device_month_paired":{"mean":0.2099,"se":0.0024,"per_seed":[0.2066,0.2086,0.2147]},"missed_departures":{"mean":2.0,"se":1.155,"per_seed":[2,4,0]},"load_api_calls":{"mean":9.3944,"se":0.0009,"per_seed":[9.3938,9.3932,9.3962]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.1,"sleep_prob":0.0,"value_retained":{"mean":0.970447,"se":0.000415,"per_seed":[0.97004,0.970023,0.971277]},"api_cost_gbp_per_device_month_paired":{"mean":0.2221,"se":0.002,"per_seed":[0.2204,0.2198,0.2261]},"missed_departures":{"mean":3.333,"se":0.882,"per_seed":[3,2,5]},"load_api_calls":{"mean":9.5439,"se":0.0077,"per_seed":[9.5562,9.5297,9.5458]},"verify_ok":[false,false,false]},{"latency_median_s":2.0,"silent_drop_prob":0.002,"sleep_prob":0.15,"value_retained":{"mean":0.974789,"se":0.00047,"per_seed":[0.974352,0.974287,0.975728]},"api_cost_gbp_per_device_month_paired":{"mean":0.0387,"se":0.0005,"per_seed":[0.0387,0.0395,0.0378]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.8596,"se":0.0063,"per_seed":[8.8629,8.8685,8.8473]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.01,"sleep_prob":0.15,"value_retained":{"mean":0.974798,"se":0.000469,"per_seed":[0.974331,0.974327,0.975736]},"api_cost_gbp_per_device_month_paired":{"mean":0.0383,"se":0.0006,"per_seed":[0.0395,0.0378,0.0374]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.8479,"se":0.0571,"per_seed":[8.9133,8.7342,8.8963]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.03,"sleep_prob":0.15,"value_retained":{"mean":0.974768,"se":0.000464,"per_seed":[0.974336,0.974274,0.975695]},"api_cost_gbp_per_device_month_paired":{"mean":0.0395,"se":0.0003,"per_seed":[0.0393,0.0401,0.0392]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":10.2096,"se":0.052,"per_seed":[10.2049,10.3019,10.1219]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.06,"sleep_prob":0.15,"value_retained":{"mean":0.974759,"se":0.000468,"per_seed":[0.974323,0.974259,0.975695]},"api_cost_gbp_per_device_month_paired":{"mean":0.0399,"se":0.0004,"per_seed":[0.0399,0.0407,0.0392]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.1935,"se":0.0311,"per_seed":[11.2545,11.1525,11.1736]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.1,"sleep_prob":0.15,"value_retained":{"mean":0.974773,"se":0.00046,"per_seed":[0.974328,0.974298,0.975693]},"api_cost_gbp_per_device_month_paired":{"mean":0.0393,"se":0.0002,"per_seed":[0.0397,0.0391,0.0393]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.5547,"se":0.1582,"per_seed":[11.242,11.7535,11.6685]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.002,"sleep_prob":0.15,"value_retained":{"mean":0.974391,"se":0.000462,"per_seed":[0.973955,0.973904,0.975314]},"api_cost_gbp_per_device_month_paired":{"mean":0.0555,"se":0.0001,"per_seed":[0.0554,0.0557,0.0553]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.8543,"se":0.0108,"per_seed":[8.8496,8.8749,8.8385]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.01,"sleep_prob":0.15,"value_retained":{"mean":0.97438,"se":0.000462,"per_seed":[0.973939,0.973897,0.975305]},"api_cost_gbp_per_device_month_paired":{"mean":0.0559,"se":0.0001,"per_seed":[0.0561,0.056,0.0557]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.9177,"se":0.0109,"per_seed":[8.9263,8.9308,8.8961]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.03,"sleep_prob":0.15,"value_retained":{"mean":0.974348,"se":0.000465,"per_seed":[0.973883,0.973883,0.975279]},"api_cost_gbp_per_device_month_paired":{"mean":0.0573,"se":0.0006,"per_seed":[0.0584,0.0566,0.0568]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":10.478,"se":0.0526,"per_seed":[10.5387,10.5221,10.3733]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.06,"sleep_prob":0.15,"value_retained":{"mean":0.974317,"se":0.000468,"per_seed":[0.973894,0.973806,0.975251]},"api_cost_gbp_per_device_month_paired":{"mean":0.0586,"se":0.0006,"per_seed":[0.058,0.0599,0.058]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.348,"se":0.0296,"per_seed":[11.3838,11.371,11.2892]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.1,"sleep_prob":0.15,"value_retained":{"mean":0.974302,"se":0.000461,"per_seed":[0.973863,0.973819,0.975223]},"api_cost_gbp_per_device_month_paired":{"mean":0.0592,"se":0.0,"per_seed":[0.0593,0.0593,0.0592]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.8926,"se":0.0039,"per_seed":[11.8878,11.9004,11.8897]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.002,"sleep_prob":0.15,"value_retained":{"mean":0.973099,"se":0.00043,"per_seed":[0.97271,0.972629,0.973959]},"api_cost_gbp_per_device_month_paired":{"mean":0.11,"se":0.0014,"per_seed":[0.1079,0.1096,0.1126]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.702,"se":0.0138,"per_seed":[13.7291,13.6929,13.684]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.01,"sleep_prob":0.15,"value_retained":{"mean":0.973079,"se":0.000422,"per_seed":[0.972667,0.972647,0.973923]},"api_cost_gbp_per_device_month_paired":{"mean":0.1109,"se":0.0017,"per_seed":[0.1097,0.1088,0.1142]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.7103,"se":0.0094,"per_seed":[13.7265,13.7102,13.6941]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.03,"sleep_prob":0.15,"value_retained":{"mean":0.97312,"se":0.000413,"per_seed":[0.972729,0.972685,0.973946]},"api_cost_gbp_per_device_month_paired":{"mean":0.1092,"se":0.002,"per_seed":[0.1071,0.1073,0.1132]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.7342,"se":0.0045,"per_seed":[13.7433,13.7302,13.7292]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.06,"sleep_prob":0.15,"value_retained":{"mean":0.973109,"se":0.000425,"per_seed":[0.972685,0.972683,0.973959]},"api_cost_gbp_per_device_month_paired":{"mean":0.1096,"se":0.0016,"per_seed":[0.1089,0.1073,0.1126]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.7843,"se":0.0073,"per_seed":[13.7876,13.795,13.7704]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.1,"sleep_prob":0.15,"value_retained":{"mean":0.973097,"se":0.000433,"per_seed":[0.972639,0.972689,0.973963]},"api_cost_gbp_per_device_month_paired":{"mean":0.1101,"se":0.0016,"per_seed":[0.1108,0.1071,0.1125]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.8742,"se":0.019,"per_seed":[13.8488,13.9114,13.8624]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.002,"sleep_prob":0.15,"value_retained":{"mean":0.97038,"se":0.00044,"per_seed":[0.969987,0.969896,0.971258]},"api_cost_gbp_per_device_month_paired":{"mean":0.2249,"se":0.0012,"per_seed":[0.2227,0.2251,0.2269]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.9447,"se":0.0116,"per_seed":[13.9316,13.9678,13.9346]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.01,"sleep_prob":0.15,"value_retained":{"mean":0.970382,"se":0.000451,"per_seed":[0.96992,0.969941,0.971284]},"api_cost_gbp_per_device_month_paired":{"mean":0.2248,"se":0.0008,"per_seed":[0.2254,0.2232,0.2258]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.9748,"se":0.0275,"per_seed":[13.9636,14.027,13.9338]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.03,"sleep_prob":0.15,"value_retained":{"mean":0.970435,"se":0.00041,"per_seed":[0.97005,0.970001,0.971254]},"api_cost_gbp_per_device_month_paired":{"mean":0.2226,"se":0.0023,"per_seed":[0.22,0.2207,0.2271]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":14.0221,"se":0.0156,"per_seed":[14.0161,14.0517,13.9986]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.06,"sleep_prob":0.15,"value_retained":{"mean":0.97043,"se":0.000415,"per_seed":[0.96997,0.970061,0.971259]},"api_cost_gbp_per_device_month_paired":{"mean":0.2228,"se":0.0025,"per_seed":[0.2233,0.2182,0.2269]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":14.0912,"se":0.0141,"per_seed":[14.1051,14.1055,14.063]},"verify_ok":[true,false,true]},{"latency_median_s":70.0,"silent_drop_prob":0.1,"sleep_prob":0.15,"value_retained":{"mean":0.970418,"se":0.000461,"per_seed":[0.97,0.969915,0.971338]},"api_cost_gbp_per_device_month_paired":{"mean":0.2233,"se":0.0006,"per_seed":[0.2221,0.2243,0.2235]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":14.2057,"se":0.0186,"per_seed":[14.2007,14.2401,14.1764]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.002,"sleep_prob":0.15,"value_retained":{"mean":0.970144,"se":0.000444,"per_seed":[0.969678,0.969722,0.971032]},"api_cost_gbp_per_device_month_paired":{"mean":0.2349,"se":0.0012,"per_seed":[0.2356,0.2325,0.2364]},"missed_departures":{"mean":0.333,"se":0.333,"per_seed":[0,1,0]},"load_api_calls":{"mean":14.5381,"se":0.0216,"per_seed":[14.5335,14.5776,14.5033]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.01,"sleep_prob":0.15,"value_retained":{"mean":0.970121,"se":0.00044,"per_seed":[0.969675,0.969687,0.971001]},"api_cost_gbp_per_device_month_paired":{"mean":0.2358,"se":0.0011,"per_seed":[0.2358,0.2339,0.2378]},"missed_departures":{"mean":0.667,"se":0.667,"per_seed":[0,0,2]},"load_api_calls":{"mean":14.5672,"se":0.0236,"per_seed":[14.5732,14.6048,14.5236]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.03,"sleep_prob":0.15,"value_retained":{"mean":0.970077,"se":0.000436,"per_seed":[0.969615,0.969666,0.970949]},"api_cost_gbp_per_device_month_paired":{"mean":0.2377,"se":0.0015,"per_seed":[0.2383,0.2349,0.2399]},"missed_departures":{"mean":1.0,"se":0.577,"per_seed":[2,1,0]},"load_api_calls":{"mean":14.6231,"se":0.0208,"per_seed":[14.5983,14.6645,14.6066]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.06,"sleep_prob":0.15,"value_retained":{"mean":0.969877,"se":0.000454,"per_seed":[0.969409,0.969437,0.970784]},"api_cost_gbp_per_device_month_paired":{"mean":0.2462,"se":0.0008,"per_seed":[0.247,0.2445,0.247]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":14.7102,"se":0.018,"per_seed":[14.7216,14.7341,14.6749]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.1,"sleep_prob":0.15,"value_retained":{"mean":0.969569,"se":0.000441,"per_seed":[0.969126,0.969131,0.970451]},"api_cost_gbp_per_device_month_paired":{"mean":0.2591,"se":0.001,"per_seed":[0.259,0.2575,0.261]},"missed_departures":{"mean":2.333,"se":0.667,"per_seed":[1,3,3]},"load_api_calls":{"mean":14.8529,"se":0.0162,"per_seed":[14.8576,14.8783,14.8227]},"verify_ok":[false,false,false]},{"latency_median_s":2.0,"silent_drop_prob":0.002,"sleep_prob":0.35,"value_retained":{"mean":0.974739,"se":0.000459,"per_seed":[0.974305,0.974256,0.975657]},"api_cost_gbp_per_device_month_paired":{"mean":0.0408,"se":0.0001,"per_seed":[0.0406,0.0409,0.0408]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.9198,"se":0.0114,"per_seed":[8.9077,8.9425,8.9092]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.01,"sleep_prob":0.35,"value_retained":{"mean":0.974729,"se":0.000465,"per_seed":[0.974286,0.974241,0.975659]},"api_cost_gbp_per_device_month_paired":{"mean":0.0412,"se":0.0003,"per_seed":[0.0414,0.0415,0.0407]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.9815,"se":0.0123,"per_seed":[8.9837,9.0015,8.9592]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.03,"sleep_prob":0.35,"value_retained":{"mean":0.974709,"se":0.000464,"per_seed":[0.974272,0.974219,0.975636]},"api_cost_gbp_per_device_month_paired":{"mean":0.042,"se":0.0002,"per_seed":[0.042,0.0424,0.0417]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":10.382,"se":0.0362,"per_seed":[10.3771,10.4469,10.3219]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.06,"sleep_prob":0.35,"value_retained":{"mean":0.974704,"se":0.000464,"per_seed":[0.974265,0.974214,0.975632]},"api_cost_gbp_per_device_month_paired":{"mean":0.0423,"se":0.0002,"per_seed":[0.0423,0.0426,0.0419]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.2685,"se":0.0238,"per_seed":[11.23,11.3121,11.2634]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.1,"sleep_prob":0.35,"value_retained":{"mean":0.974701,"se":0.000475,"per_seed":[0.97426,0.974193,0.97565]},"api_cost_gbp_per_device_month_paired":{"mean":0.0424,"se":0.0007,"per_seed":[0.0425,0.0435,0.0411]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.7859,"se":0.0137,"per_seed":[11.7984,11.8009,11.7585]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.002,"sleep_prob":0.35,"value_retained":{"mean":0.974373,"se":0.00046,"per_seed":[0.973938,0.973887,0.975293]},"api_cost_gbp_per_device_month_paired":{"mean":0.0563,"se":0.0001,"per_seed":[0.0561,0.0564,0.0562]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.9103,"se":0.0051,"per_seed":[8.9031,8.9203,8.9076]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.01,"sleep_prob":0.35,"value_retained":{"mean":0.974347,"se":0.000467,"per_seed":[0.973901,0.973859,0.975282]},"api_cost_gbp_per_device_month_paired":{"mean":0.0573,"se":0.0003,"per_seed":[0.0576,0.0576,0.0567]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.9586,"se":0.0162,"per_seed":[8.9688,8.98,8.9269]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.03,"sleep_prob":0.35,"value_retained":{"mean":0.974324,"se":0.000473,"per_seed":[0.973882,0.973821,0.975269]},"api_cost_gbp_per_device_month_paired":{"mean":0.0583,"se":0.0006,"per_seed":[0.0584,0.0592,0.0572]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":10.4658,"se":0.0322,"per_seed":[10.4653,10.5218,10.4102]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.06,"sleep_prob":0.35,"value_retained":{"mean":0.974266,"se":0.000462,"per_seed":[0.973841,0.973767,0.97519]},"api_cost_gbp_per_device_month_paired":{"mean":0.0608,"se":0.0004,"per_seed":[0.0602,0.0615,0.0605]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.3935,"se":0.0222,"per_seed":[11.4292,11.3987,11.3527]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.1,"sleep_prob":0.35,"value_retained":{"mean":0.9743,"se":0.00046,"per_seed":[0.973861,0.973819,0.975221]},"api_cost_gbp_per_device_month_paired":{"mean":0.0593,"se":0.0,"per_seed":[0.0594,0.0593,0.0593]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.9441,"se":0.039,"per_seed":[11.9004,12.022,11.9099]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.002,"sleep_prob":0.35,"value_retained":{"mean":0.973115,"se":0.00044,"per_seed":[0.972654,0.972698,0.973994]},"api_cost_gbp_per_device_month_paired":{"mean":0.1094,"se":0.0014,"per_seed":[0.1102,0.1067,0.1111]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.7279,"se":0.0153,"per_seed":[13.7023,13.7552,13.7262]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.01,"sleep_prob":0.35,"value_retained":{"mean":0.973087,"se":0.000448,"per_seed":[0.972605,0.972674,0.973981]},"api_cost_gbp_per_device_month_paired":{"mean":0.1106,"se":0.0014,"per_seed":[0.1123,0.1077,0.1117]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.7463,"se":0.0222,"per_seed":[13.7114,13.7874,13.7402]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.03,"sleep_prob":0.35,"value_retained":{"mean":0.973131,"se":0.000442,"per_seed":[0.972681,0.972697,0.974016]},"api_cost_gbp_per_device_month_paired":{"mean":0.1087,"se":0.001,"per_seed":[0.1091,0.1067,0.1102]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.7767,"se":0.0206,"per_seed":[13.7697,13.8154,13.7451]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.06,"sleep_prob":0.35,"value_retained":{"mean":0.9731,"se":0.000442,"per_seed":[0.972638,0.972677,0.973984]},"api_cost_gbp_per_device_month_paired":{"mean":0.11,"se":0.0012,"per_seed":[0.1109,0.1076,0.1116]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.8123,"se":0.0138,"per_seed":[13.7951,13.8396,13.8023]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.1,"sleep_prob":0.35,"value_retained":{"mean":0.973084,"se":0.000451,"per_seed":[0.972636,0.97263,0.973986]},"api_cost_gbp_per_device_month_paired":{"mean":0.1107,"se":0.0006,"per_seed":[0.111,0.1096,0.1115]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.916,"se":0.0153,"per_seed":[13.9149,13.9429,13.8901]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.002,"sleep_prob":0.35,"value_retained":{"mean":0.970467,"se":0.000452,"per_seed":[0.969968,0.970064,0.97137]},"api_cost_gbp_per_device_month_paired":{"mean":0.2212,"se":0.0016,"per_seed":[0.2234,0.218,0.2222]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.9634,"se":0.021,"per_seed":[13.9549,14.0033,13.932]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.01,"sleep_prob":0.35,"value_retained":{"mean":0.970421,"se":0.000409,"per_seed":[0.97001,0.970013,0.971239]},"api_cost_gbp_per_device_month_paired":{"mean":0.2232,"se":0.0023,"per_seed":[0.2217,0.2202,0.2277]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.988,"se":0.01,"per_seed":[13.9729,14.007,13.9841]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.03,"sleep_prob":0.35,"value_retained":{"mean":0.970435,"se":0.000416,"per_seed":[0.970088,0.969954,0.971263]},"api_cost_gbp_per_device_month_paired":{"mean":0.2226,"se":0.0024,"per_seed":[0.2184,0.2227,0.2267]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":14.019,"se":0.013,"per_seed":[14.0036,14.0448,14.0085]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.06,"sleep_prob":0.35,"value_retained":{"mean":0.970408,"se":0.000465,"per_seed":[0.969917,0.969969,0.971338]},"api_cost_gbp_per_device_month_paired":{"mean":0.2237,"se":0.001,"per_seed":[0.2256,0.222,0.2235]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":14.1011,"se":0.0114,"per_seed":[14.0883,14.1239,14.0911]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.1,"sleep_prob":0.35,"value_retained":{"mean":0.970512,"se":0.000395,"per_seed":[0.970135,0.9701,0.971301]},"api_cost_gbp_per_device_month_paired":{"mean":0.2193,"se":0.0029,"per_seed":[0.2164,0.2165,0.225]},"missed_departures":{"mean":0.333,"se":0.333,"per_seed":[1,0,0]},"load_api_calls":{"mean":14.2256,"se":0.0133,"per_seed":[14.218,14.2515,14.2072]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.002,"sleep_prob":0.35,"value_retained":{"mean":0.970126,"se":0.000435,"per_seed":[0.969666,0.969715,0.970996]},"api_cost_gbp_per_device_month_paired":{"mean":0.2356,"se":0.0015,"per_seed":[0.2362,0.2328,0.238]},"missed_departures":{"mean":1.0,"se":0.577,"per_seed":[0,1,2]},"load_api_calls":{"mean":14.5666,"se":0.021,"per_seed":[14.5639,14.6043,14.5316]},"verify_ok":[true,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.01,"sleep_prob":0.35,"value_retained":{"mean":0.970117,"se":0.000472,"per_seed":[0.969595,0.969696,0.971059]},"api_cost_gbp_per_device_month_paired":{"mean":0.236,"se":0.0017,"per_seed":[0.2392,0.2336,0.2353]},"missed_departures":{"mean":0.667,"se":0.667,"per_seed":[0,2,0]},"load_api_calls":{"mean":14.5842,"se":0.0143,"per_seed":[14.5927,14.6035,14.5563]},"verify_ok":[false,false,true]},{"latency_median_s":150.0,"silent_drop_prob":0.03,"sleep_prob":0.35,"value_retained":{"mean":0.970051,"se":0.000465,"per_seed":[0.96959,0.969583,0.970981]},"api_cost_gbp_per_device_month_paired":{"mean":0.2388,"se":0.0003,"per_seed":[0.2394,0.2384,0.2386]},"missed_departures":{"mean":1.0,"se":0.577,"per_seed":[0,1,2]},"load_api_calls":{"mean":14.6408,"se":0.0252,"per_seed":[14.6234,14.6904,14.6085]},"verify_ok":[true,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.06,"sleep_prob":0.35,"value_retained":{"mean":0.969893,"se":0.000467,"per_seed":[0.969388,0.969466,0.970825]},"api_cost_gbp_per_device_month_paired":{"mean":0.2455,"se":0.0013,"per_seed":[0.2479,0.2433,0.2452]},"missed_departures":{"mean":1.0,"se":0.0,"per_seed":[1,1,1]},"load_api_calls":{"mean":14.7341,"se":0.0105,"per_seed":[14.7464,14.7426,14.7132]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.1,"sleep_prob":0.35,"value_retained":{"mean":0.969624,"se":0.000483,"per_seed":[0.969135,0.969147,0.97059]},"api_cost_gbp_per_device_month_paired":{"mean":0.2568,"se":0.001,"per_seed":[0.2585,0.2568,0.2552]},"missed_departures":{"mean":3.333,"se":0.882,"per_seed":[5,2,3]},"load_api_calls":{"mean":14.8874,"se":0.022,"per_seed":[14.8791,14.929,14.8541]},"verify_ok":[false,false,false]},{"latency_median_s":2.0,"silent_drop_prob":0.002,"sleep_prob":0.7,"value_retained":{"mean":0.974671,"se":0.000466,"per_seed":[0.974233,0.974177,0.975603]},"api_cost_gbp_per_device_month_paired":{"mean":0.0436,"se":0.0003,"per_seed":[0.0436,0.0442,0.0431]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":9.028,"se":0.0142,"per_seed":[9.0304,9.0514,9.0023]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.01,"sleep_prob":0.7,"value_retained":{"mean":0.974663,"se":0.000463,"per_seed":[0.974229,0.974173,0.975588]},"api_cost_gbp_per_device_month_paired":{"mean":0.044,"se":0.0002,"per_seed":[0.0438,0.0444,0.0437]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":9.0739,"se":0.0121,"per_seed":[9.0693,9.0968,9.0555]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.03,"sleep_prob":0.7,"value_retained":{"mean":0.974644,"se":0.000457,"per_seed":[0.974228,0.974148,0.975557]},"api_cost_gbp_per_device_month_paired":{"mean":0.0448,"se":0.0005,"per_seed":[0.0439,0.0454,0.045]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":10.4745,"se":0.0348,"per_seed":[10.4593,10.541,10.4233]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.06,"sleep_prob":0.7,"value_retained":{"mean":0.974639,"se":0.000466,"per_seed":[0.974198,0.974149,0.97557]},"api_cost_gbp_per_device_month_paired":{"mean":0.045,"se":0.0003,"per_seed":[0.0451,0.0454,0.0445]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.324,"se":0.0086,"per_seed":[11.3334,11.3317,11.3069]},"verify_ok":[true,true,true]},{"latency_median_s":2.0,"silent_drop_prob":0.1,"sleep_prob":0.7,"value_retained":{"mean":0.97464,"se":0.000468,"per_seed":[0.97419,0.974153,0.975576]},"api_cost_gbp_per_device_month_paired":{"mean":0.045,"se":0.0004,"per_seed":[0.0455,0.0452,0.0442]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.9062,"se":0.0201,"per_seed":[11.898,11.9443,11.8762]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.002,"sleep_prob":0.7,"value_retained":{"mean":0.974323,"se":0.000467,"per_seed":[0.973878,0.973835,0.975257]},"api_cost_gbp_per_device_month_paired":{"mean":0.0583,"se":0.0003,"per_seed":[0.0586,0.0587,0.0577]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":8.9866,"se":0.01,"per_seed":[8.9812,9.006,8.9727]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.01,"sleep_prob":0.7,"value_retained":{"mean":0.974284,"se":0.000459,"per_seed":[0.973834,0.973816,0.975203]},"api_cost_gbp_per_device_month_paired":{"mean":0.06,"se":0.0003,"per_seed":[0.0605,0.0594,0.06]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":9.0544,"se":0.008,"per_seed":[9.06,9.0646,9.0386]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.03,"sleep_prob":0.7,"value_retained":{"mean":0.974268,"se":0.000446,"per_seed":[0.973817,0.973826,0.97516]},"api_cost_gbp_per_device_month_paired":{"mean":0.0607,"se":0.0008,"per_seed":[0.0612,0.059,0.0618]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":10.5104,"se":0.0413,"per_seed":[10.5796,10.5151,10.4366]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.06,"sleep_prob":0.7,"value_retained":{"mean":0.97426,"se":0.000456,"per_seed":[0.973813,0.973794,0.975172]},"api_cost_gbp_per_device_month_paired":{"mean":0.061,"se":0.0003,"per_seed":[0.0614,0.0604,0.0613]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":11.4736,"se":0.0514,"per_seed":[11.558,11.4823,11.3806]},"verify_ok":[true,true,true]},{"latency_median_s":10.0,"silent_drop_prob":0.1,"sleep_prob":0.7,"value_retained":{"mean":0.974262,"se":0.000462,"per_seed":[0.973811,0.973789,0.975187]},"api_cost_gbp_per_device_month_paired":{"mean":0.0609,"se":0.0003,"per_seed":[0.0615,0.0606,0.0607]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":12.0458,"se":0.0197,"per_seed":[12.0094,12.077,12.0511]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.002,"sleep_prob":0.7,"value_retained":{"mean":0.97308,"se":0.00043,"per_seed":[0.972649,0.972651,0.97394]},"api_cost_gbp_per_device_month_paired":{"mean":0.1108,"se":0.0014,"per_seed":[0.1104,0.1087,0.1134]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.8081,"se":0.0038,"per_seed":[13.8007,13.8129,13.8107]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.01,"sleep_prob":0.7,"value_retained":{"mean":0.973096,"se":0.000422,"per_seed":[0.972665,0.972683,0.97394]},"api_cost_gbp_per_device_month_paired":{"mean":0.1102,"se":0.0018,"per_seed":[0.1098,0.1073,0.1134]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.7888,"se":0.017,"per_seed":[13.7848,13.8201,13.7615]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.03,"sleep_prob":0.7,"value_retained":{"mean":0.973119,"se":0.000448,"per_seed":[0.972671,0.972671,0.974016]},"api_cost_gbp_per_device_month_paired":{"mean":0.1092,"se":0.0007,"per_seed":[0.1095,0.1079,0.1102]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.8206,"se":0.0054,"per_seed":[13.8156,13.8314,13.8148]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.06,"sleep_prob":0.7,"value_retained":{"mean":0.973098,"se":0.000434,"per_seed":[0.972628,0.9727,0.973966]},"api_cost_gbp_per_device_month_paired":{"mean":0.1101,"se":0.0018,"per_seed":[0.1113,0.1066,0.1123]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.8904,"se":0.0124,"per_seed":[13.8976,13.9074,13.8662]},"verify_ok":[true,true,true]},{"latency_median_s":30.0,"silent_drop_prob":0.1,"sleep_prob":0.7,"value_retained":{"mean":0.973102,"se":0.00043,"per_seed":[0.972631,0.972713,0.973961]},"api_cost_gbp_per_device_month_paired":{"mean":0.1099,"se":0.002,"per_seed":[0.1112,0.1061,0.1125]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.9746,"se":0.0034,"per_seed":[13.9787,13.9678,13.9773]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.002,"sleep_prob":0.7,"value_retained":{"mean":0.970456,"se":0.00043,"per_seed":[0.97006,0.969993,0.971314]},"api_cost_gbp_per_device_month_paired":{"mean":0.2217,"se":0.0015,"per_seed":[0.2196,0.221,0.2245]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":13.99,"se":0.0193,"per_seed":[13.9911,14.0229,13.9559]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.01,"sleep_prob":0.7,"value_retained":{"mean":0.970459,"se":0.000469,"per_seed":[0.969968,0.970012,0.971397]},"api_cost_gbp_per_device_month_paired":{"mean":0.2216,"se":0.001,"per_seed":[0.2235,0.2202,0.221]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":14.0152,"se":0.0114,"per_seed":[14.0139,14.0356,13.9961]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.03,"sleep_prob":0.7,"value_retained":{"mean":0.97047,"se":0.000421,"per_seed":[0.969993,0.970107,0.97131]},"api_cost_gbp_per_device_month_paired":{"mean":0.2211,"se":0.0025,"per_seed":[0.2224,0.2162,0.2247]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":14.0521,"se":0.0086,"per_seed":[14.0543,14.0658,14.0361]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.06,"sleep_prob":0.7,"value_retained":{"mean":0.97039,"se":0.000433,"per_seed":[0.969929,0.969986,0.971255]},"api_cost_gbp_per_device_month_paired":{"mean":0.2245,"se":0.0017,"per_seed":[0.2251,0.2213,0.227]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"load_api_calls":{"mean":14.1421,"se":0.005,"per_seed":[14.1322,14.1473,14.1469]},"verify_ok":[true,true,true]},{"latency_median_s":70.0,"silent_drop_prob":0.1,"sleep_prob":0.7,"value_retained":{"mean":0.970406,"se":0.000349,"per_seed":[0.970126,0.969993,0.9711]},"api_cost_gbp_per_device_month_paired":{"mean":0.2238,"se":0.005,"per_seed":[0.2168,0.221,0.2336]},"missed_departures":{"mean":0.333,"se":0.333,"per_seed":[0,0,1]},"load_api_calls":{"mean":14.2662,"se":0.0171,"per_seed":[14.2591,14.2988,14.2407]},"verify_ok":[true,true,false]},{"latency_median_s":150.0,"silent_drop_prob":0.002,"sleep_prob":0.7,"value_retained":{"mean":0.970124,"se":0.000443,"per_seed":[0.969678,0.969685,0.971009]},"api_cost_gbp_per_device_month_paired":{"mean":0.2357,"se":0.001,"per_seed":[0.2357,0.2341,0.2374]},"missed_departures":{"mean":0.667,"se":0.333,"per_seed":[0,1,1]},"load_api_calls":{"mean":14.6097,"se":0.0264,"per_seed":[14.6139,14.6532,14.5619]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.01,"sleep_prob":0.7,"value_retained":{"mean":0.970102,"se":0.000433,"per_seed":[0.969694,0.969645,0.970967]},"api_cost_gbp_per_device_month_paired":{"mean":0.2366,"se":0.0013,"per_seed":[0.235,0.2357,0.2392]},"missed_departures":{"mean":1.0,"se":0.577,"per_seed":[0,2,1]},"load_api_calls":{"mean":14.6309,"se":0.0223,"per_seed":[14.6222,14.6731,14.5974]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.03,"sleep_prob":0.7,"value_retained":{"mean":0.970058,"se":0.000438,"per_seed":[0.969654,0.969588,0.970933]},"api_cost_gbp_per_device_month_paired":{"mean":0.2385,"se":0.0012,"per_seed":[0.2367,0.2381,0.2406]},"missed_departures":{"mean":1.333,"se":0.882,"per_seed":[3,0,1]},"load_api_calls":{"mean":14.6877,"se":0.0175,"per_seed":[14.6896,14.7171,14.6565]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.06,"sleep_prob":0.7,"value_retained":{"mean":0.969866,"se":0.000454,"per_seed":[0.969426,0.969398,0.970775]},"api_cost_gbp_per_device_month_paired":{"mean":0.2466,"se":0.0004,"per_seed":[0.2463,0.2462,0.2473]},"missed_departures":{"mean":1.0,"se":0.577,"per_seed":[1,2,0]},"load_api_calls":{"mean":14.7823,"se":0.0232,"per_seed":[14.7568,14.8285,14.7615]},"verify_ok":[false,false,false]},{"latency_median_s":150.0,"silent_drop_prob":0.1,"sleep_prob":0.7,"value_retained":{"mean":0.969516,"se":0.000467,"per_seed":[0.968991,0.96911,0.970447]},"api_cost_gbp_per_device_month_paired":{"mean":0.2614,"se":0.0018,"per_seed":[0.2646,0.2583,0.2612]},"missed_departures":{"mean":3.0,"se":1.155,"per_seed":[5,1,3]},"load_api_calls":{"mean":14.9407,"se":0.0123,"per_seed":[14.944,14.9603,14.9179]},"verify_ok":[false,false,false]}]},"scorecards":{"tier_rule":"dispatch-grade: API cost < 0.5 pp of plan value, zero missed departures, and API calls < 2x the clean level; not ready: API cost >= 2 pp or >= 5 missed departures per 10,000 device-nights; otherwise schedule-only (usable for slow, pre-planned schedules, not tight dispatch).","cards":{"Northwind":{"devices":1750,"share":0.35,"kind":"chargepoint","value_retained":{"mean":0.975442,"se":0.000801,"per_seed":[0.973914,0.975788,0.976623]},"clean_value_retained":{"mean":0.975592,"se":0.000801,"per_seed":[0.974062,0.975946,0.976767]},"api_cost_gbp_per_device_month":{"mean":0.0063,"se":0.0002,"per_seed":[0.0063,0.0067,0.006]},"api_cost_retained_pp":{"mean":0.015,"se":0.0004,"per_seed":[0.0148,0.0158,0.0144]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"command_to_effect_p50_s":{"mean":2.0,"se":0.0,"per_seed":[2.0,2.0,2.0]},"command_to_effect_p95_s":{"mean":3.6,"se":0.0,"per_seed":[3.6,3.6,3.6]},"calls_vs_clean_ratio":1.04,"tier":"dispatch-grade","sweep_point":{"latency_median_s":2.0,"silent_drop_prob":0.002,"sleep_prob":0.0,"api_cost_gbp_per_device_month":0.005}},"Bramble":{"devices":1250,"share":0.25,"kind":"chargepoint","value_retained":{"mean":0.972913,"se":0.000746,"per_seed":[0.971427,0.973776,0.973536]},"clean_value_retained":{"mean":0.97661,"se":0.000724,"per_seed":[0.975171,0.977467,0.977192]},"api_cost_gbp_per_device_month":{"mean":0.155,"se":0.0005,"per_seed":[0.1559,0.154,0.155]},"api_cost_retained_pp":{"mean":0.3697,"se":0.0026,"per_seed":[0.3744,0.3691,0.3656]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"command_to_effect_p50_s":{"mean":5.0,"se":0.0,"per_seed":[5.0,5.0,5.0]},"command_to_effect_p95_s":{"mean":12.2,"se":0.0,"per_seed":[12.3,12.1,12.2]},"calls_vs_clean_ratio":1.15,"tier":"dispatch-grade","sweep_point":{"latency_median_s":5.0,"silent_drop_prob":0.005,"sleep_prob":0.0,"api_cost_gbp_per_device_month":0.0137}},"Kestrel":{"devices":1250,"share":0.25,"kind":"carmaker","value_retained":{"mean":0.974025,"se":0.000194,"per_seed":[0.973637,0.974233,0.974205]},"clean_value_retained":{"mean":0.975969,"se":0.000213,"per_seed":[0.975545,0.976205,0.976158]},"api_cost_gbp_per_device_month":{"mean":0.082,"se":0.0011,"per_seed":[0.081,0.0841,0.0808]},"api_cost_retained_pp":{"mean":0.1944,"se":0.0019,"per_seed":[0.1908,0.1972,0.1953]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"command_to_effect_p50_s":{"mean":4.0,"se":0.0,"per_seed":[4.0,4.0,4.0]},"command_to_effect_p95_s":{"mean":10.3,"se":0.0,"per_seed":[10.3,10.3,10.3]},"calls_vs_clean_ratio":2.35,"tier":"schedule-only","sweep_point":{"latency_median_s":4.0,"silent_drop_prob":0.01,"sleep_prob":0.35,"api_cost_gbp_per_device_month":0.0452},"wakes":{"mean":4.3663,"se":0.0474,"per_seed":[4.3428,4.2985,4.4577]}},"Halcyon":{"devices":750,"share":0.15,"kind":"carmaker","value_retained":{"mean":0.967691,"se":0.000503,"per_seed":[0.967689,0.96682,0.968564]},"clean_value_retained":{"mean":0.975626,"se":0.000478,"per_seed":[0.975729,0.974751,0.976397]},"api_cost_gbp_per_device_month":{"mean":0.335,"se":0.0025,"per_seed":[0.3399,0.3316,0.3336]},"api_cost_retained_pp":{"mean":0.7935,"se":0.006,"per_seed":[0.804,0.7931,0.7833]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"command_to_effect_p50_s":{"mean":61.1,"se":0.2,"per_seed":[61.5,60.9,60.9]},"command_to_effect_p95_s":{"mean":157.3,"se":0.8,"per_seed":[158.9,156.1,157.0]},"calls_vs_clean_ratio":4.06,"tier":"schedule-only","sweep_point":{"latency_median_s":70.0,"silent_drop_prob":0.03,"sleep_prob":0.15,"api_cost_gbp_per_device_month":0.2226}}},"fleet":{"devices":5000,"value_retained":{"mean":0.973436,"se":0.000514,"per_seed":[0.972447,0.973689,0.974173]},"clean_value_retained":{"mean":0.975946,"se":0.00051,"per_seed":[0.974961,0.97621,0.976668]},"api_cost_gbp_per_device_month":{"mean":0.1059,"se":0.0004,"per_seed":[0.1061,0.1064,0.1051]},"api_cost_retained_pp":{"mean":0.251,"se":0.0008,"per_seed":[0.2514,0.2521,0.2495]},"missed_departures":{"mean":0.0,"se":0.0,"per_seed":[0,0,0]},"plan_value_gbp_per_device_month":{"mean":42.1685,"se":0.0246,"per_seed":[42.2,42.1856,42.1199]},"load_api_calls":{"mean":7.3459,"se":0.0116,"per_seed":[7.3481,7.3248,7.3648]},"clean_load_api_calls":{"mean":3.9715,"se":0.0041,"per_seed":[3.9633,3.9766,3.9745]}}}}</script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('results-data').textContent);
+  var S = D.sweep, G = S.grid, POUND = '\u00a3', PM = '\u00b1';
+  var LAT = G.latency_median_s, DROP = G.silent_drop_prob, SLP = G.sleep_prob;
+  var idx = {};
+  S.cells.forEach(function(c){ idx[c.latency_median_s+'|'+c.silent_drop_prob+'|'+c.sleep_prob] = c; });
+  var $ = function(id){ return document.getElementById(id); };
+  function fmtLat(v){ return v + ' s'; }
+  function fmtPct(v){ return (Math.round(v*1000)/10) + '%'; }
+  function ticks(id, arr, f){ $(id).innerHTML = arr.map(function(v){ return '<span>'+f(v)+'</span>'; }).join(''); }
+  ticks('t-lat', LAT, fmtLat); ticks('t-drop', DROP, fmtPct); ticks('t-sleep', SLP, fmtPct);
+  function nearest(arr, v){ var b=0; arr.forEach(function(x,i){ if(Math.abs(x-v)<Math.abs(arr[b]-v)) b=i; }); return b; }
+  function render(){
+    var li=+$('c-lat').value, di=+$('c-drop').value, si=+$('c-sleep').value;
+    $('c-lat').setAttribute('aria-valuetext', fmtLat(LAT[li]));
+    $('c-drop').setAttribute('aria-valuetext', fmtPct(DROP[di]));
+    $('c-sleep').setAttribute('aria-valuetext', fmtPct(SLP[si]));
+    $('o-lat').textContent = fmtLat(LAT[li]);
+    $('o-drop').textContent = fmtPct(DROP[di]);
+    $('o-sleep').textContent = fmtPct(SLP[si]);
+    var c = idx[LAT[li]+'|'+DROP[di]+'|'+SLP[si]];
+    if(!c){ return; }
+    var refCalls = S.reference.load_api_calls.mean;
+    $('r-vr').textContent = (c.value_retained.mean*100).toFixed(2)+'%';
+    $('r-ref').textContent = (S.reference.value_retained.mean*100).toFixed(2)+'%';
+    var cost = c.api_cost_gbp_per_device_month_paired;
+    $('r-cost').textContent = POUND + cost.mean.toFixed(3);
+    $('r-se').textContent = PM + ' ' + (2*cost.se < 0.0005 ? 'under ' + POUND + '0.001' : POUND + (2*cost.se).toFixed(3));
+    $('r-calls').textContent = c.load_api_calls.mean.toFixed(1);
+    $('r-mult').textContent = (c.load_api_calls.mean/refCalls).toFixed(2) + 'x';
+    $('r-miss').textContent = c.missed_departures.mean.toFixed(1);
+    var bad = c.verify_ok.filter(function(x){ return !x; }).length;
+    var flag = $('r-flag');
+    if(bad>0){
+      flag.className = 'flag';
+      flag.textContent = 'Caution: our independent checks found problems in ' + bad + ' of ' + c.verify_ok.length + ' runs at this setting (for example, cars charged at the wrong time). Treat these numbers with care.';
+    } else {
+      flag.className = 'flag ok';
+      flag.textContent = 'Our independent checks passed in all ' + c.verify_ok.length + ' runs at this setting.';
+    }
+  }
+  ['c-lat','c-drop','c-sleep'].forEach(function(id){ $(id).addEventListener('input', render); });
+  var pr = $('presets');
+  Object.keys(D.scorecards.cards).forEach(function(name){
+    var sp = D.scorecards.cards[name].sweep_point;
+    if(!sp){ return; }
+    var b = document.createElement('button'); b.type='button'; b.textContent = 'Like ' + name;
+    b.addEventListener('click', function(){
+      $('c-lat').value = nearest(LAT, sp.latency_median_s);
+      $('c-drop').value = nearest(DROP, sp.silent_drop_prob);
+      $('c-sleep').value = nearest(SLP, sp.sleep_prob);
+      render();
+    });
+    pr.appendChild(b);
+  });
+  render();
+})();
+</script>
+</body>
+</html>
