@@ -102,6 +102,22 @@ button:hover{border-color:var(--accent);color:var(--accent)}
 .diagram .head{fill:var(--muted);stroke:none}
 .limits{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr;gap:10px}
 .limits li{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:.94rem}
+.cmp{display:grid;gap:12px}
+.cmp-head{display:none}
+.cmp-row{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);display:grid;gap:10px}
+.cmp-row h3{font-size:1rem}
+.cmp-cell p{margin:0;font-size:.93rem}
+.cmp-cell .who{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.cmp-cell.live .who{color:var(--accent-2)}
+.cmp-cell.live{border-left:3px solid var(--accent-2);padding-left:10px}
+.cmp-cell.ours{border-left:3px solid var(--line);padding-left:10px}
+.gap{justify-self:start;font-size:.78rem;font-weight:700;color:var(--warn);background:var(--warn-bg);border-radius:999px;padding:3px 10px}
+@media (min-width:760px){
+  .cmp-head{display:grid;grid-template-columns:11rem 1fr 1fr;gap:16px;padding:0 18px;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .cmp-row{grid-template-columns:11rem 1fr 1fr;column-gap:16px;align-items:start}
+  .cmp-row .who{display:none}
+  .cmp-row .gap{grid-column:2 / span 2}
+}
 footer{margin:48px 0 0;padding:24px 0 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
 @media (min-width:640px){
   h1{font-size:2.6rem}
@@ -298,43 +314,46 @@ footer{margin:48px 0 0;padding:24px 0 40px;border-top:1px solid var(--line);colo
 </section>
 
 <section aria-labelledby="flow">
-  <h2 id="flow">Where it goes wrong</h2>
-  <div class="panel">
-  <svg class="diagram" viewBox="0 0 360 560" role="img" aria-labelledby="flow-t flow-d">
-    <title id="flow-t">From plan to car, and where each problem hits</title>
-    <desc id="flow-d">The plan goes to the control software, then through the partner's system to the car. Problems: slow or ignored messages and message limits between the software and the partner's system; outages and sleeping cars between the partner's system and the car; chargers that are slower than they claim at the car; and on the way back, status data that is stuck or wrong, updates lost or late, missing meter readings and clocks that are off.</desc>
-    <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker></defs>
-    <rect class="box" x="90" y="8" width="180" height="48" rx="10"/>
-    <text x="180" y="30" text-anchor="middle">1. The plan</text>
-    <text x="180" y="46" text-anchor="middle" class="sm">cheapest hours, set each evening</text>
-    <line x1="180" y1="56" x2="180" y2="98" marker-end="url(#ah)"/>
-    <rect class="box" x="90" y="100" width="180" height="48" rx="10"/>
-    <text x="180" y="122" text-anchor="middle">2. Control software</text>
-    <text x="180" y="138" text-anchor="middle" class="sm">written for this project</text>
-    <line x1="180" y1="148" x2="180" y2="218" marker-end="url(#ah)"/>
-    <rect class="failbox" x="6" y="160" width="166" height="46" rx="8"/>
-    <text x="14" y="177" class="fail">Slow or ignored messages</text>
-    <text x="14" y="193" class="fail">Limits on how many you send</text>
-    <rect class="box" x="90" y="220" width="180" height="48" rx="10"/>
-    <text x="180" y="242" text-anchor="middle">3. Partner's system</text>
-    <text x="180" y="258" text-anchor="middle" class="sm">made up, invented failures</text>
-    <line x1="180" y1="268" x2="180" y2="338" marker-end="url(#ah)"/>
-    <rect class="failbox" x="190" y="280" width="164" height="46" rx="8"/>
-    <text x="198" y="297" class="fail">Outages</text>
-    <text x="198" y="313" class="fail">Cars asleep, need waking</text>
-    <rect class="box" x="90" y="340" width="180" height="48" rx="10"/>
-    <text x="180" y="362" text-anchor="middle">4. The car</text>
-    <text x="180" y="378" text-anchor="middle" class="sm">must be charged by morning</text>
-    <rect class="failbox" x="6" y="398" width="180" height="46" rx="8"/>
-    <text x="14" y="415" class="fail">Charger slower than it</text>
-    <text x="14" y="431" class="fail">claims (says 7 kW)</text>
-    <path class="arrow" d="M 270 364 L 330 364 L 330 124 L 274 124" marker-end="url(#ah)"/>
-    <text x="180" y="470" text-anchor="middle" class="sm">On the way back to the software (right-hand line):</text>
-    <rect class="failbox" x="24" y="480" width="312" height="64" rx="8"/>
-    <text x="34" y="499" class="fail">Status data stuck or wrong</text>
-    <text x="34" y="515" class="fail">Updates lost, late, repeated or out of order</text>
-    <text x="34" y="531" class="fail">Meter readings missing; clocks a few seconds off</text>
-  </svg>
+  <h2 id="flow">What we modelled vs a live platform</h2>
+  <p class="intro">How this simulation compares, stage by stage, with what a provider running similar software in production would typically have. The live column is a general picture, not any specific company.</p>
+  <div class="cmp">
+    <div class="cmp-head" aria-hidden="true"><span></span><span>Our model</span><span>Live platform</span></div>
+    <div class="cmp-row">
+      <h3>Prices and plan</h3>
+      <div class="cmp-cell ours"><span class="who">Our model</span><p>Real Octopus Agile prices. Each car's cheapest half-hours picked once, in the evening.</p></div>
+      <div class="cmp-cell live"><span class="who">Live platform</span><p>Price and demand forecasts, re-optimised through the night as conditions change.</p></div>
+      <span class="gap">Fixed plan vs continuous re-planning</span>
+    </div>
+    <div class="cmp-row">
+      <h3>Where the value comes from</h3>
+      <div class="cmp-cell ours"><span class="who">Our model</span><p>Bill savings, plus a simple estimate of the cost of not delivering as planned.</p></div>
+      <div class="cmp-cell live"><span class="who">Live platform</span><p>Several markets stacked on the same flexibility: wholesale trading, the Demand Flexibility Service, the Capacity Market and local network flexibility.</p></div>
+      <span class="gap">One value stream vs many</span>
+    </div>
+    <div class="cmp-row">
+      <h3>Control software</h3>
+      <div class="cmp-cell ours"><span class="who">Our model</span><p>Written for this project. Stress-tested over 4 rounds, with known gaps left open.</p></div>
+      <div class="cmp-cell live"><span class="who">Live platform</span><p>Years of production hardening, per-partner adapters, monitoring and on-call support.</p></div>
+      <span class="gap">Prototype vs production</span>
+    </div>
+    <div class="cmp-row">
+      <h3>Partner integrations</h3>
+      <div class="cmp-cell ours"><span class="who">Our model</span><p>Four made-up companies on one shared interface, with invented failure rates.</p></div>
+      <div class="cmp-cell live"><span class="who">Live platform</span><p>Dozens of real car and charger platforms, each with its own quirks, contracts and service levels, measured from live traffic.</p></div>
+      <span class="gap">Assumed vs measured reliability</span>
+    </div>
+    <div class="cmp-row">
+      <h3>Devices</h3>
+      <div class="cmp-cell ours"><span class="who">Our model</span><p>5,000 EVs charging at home, with typical UK driving patterns.</p></div>
+      <div class="cmp-cell live"><span class="who">Live platform</span><p>EVs alongside home batteries, heat pumps and solar, with customers overriding through apps.</p></div>
+      <span class="gap">EVs only vs mixed fleet</span>
+    </div>
+    <div class="cmp-row">
+      <h3>Settlement</h3>
+      <div class="cmp-cell ours"><span class="who">Our model</span><p>Simulated meter readings settle each night in the model.</p></div>
+      <div class="cmp-cell live"><span class="who">Live platform</span><p>Half-hourly settlement through industry processes, judged against baselines, with penalties for under-delivery.</p></div>
+      <span class="gap">Simplified vs industry settlement</span>
+    </div>
   </div>
 </section>
 
